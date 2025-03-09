@@ -41,5 +41,49 @@ Derivative Control (D): Acts on the rate of change of the error, predicting futu
 - **(tau_D)** → Derivative time constant, which improves response by anticipating error changes.  
 
 
+### Solving the system's ODE
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.integrate import solve_ivp
+
+    
+    # Given parameters
+    A = 0.3  # m^2
+    Rv = 19.5  # min/m^2
+    qe_0 = 0.015  # m^3/min
+    h_0 = 0.2925  # m
+
+    
+
+    # Differential equation function
+    def dh_dt(t, h):
+    q = (1 / Rv) * h  # Outflow equation
+    return (qe_0 - q) / A  # ODE
 
 
+    # Time span for simulation
+    t_span = (0, 10)  # Simulating for 10 minutes
+    t_eval = np.linspace(0, 10, 100)  # Time points for evaluation
+
+
+    # Solving the ODE
+    solution = solve_ivp(dh_dt, t_span, [h_0], t_eval=t_eval, method='RK45')
+
+
+    # Extracting results
+    t_values = solution.t
+    h_values = solution.y[0]
+
+
+    # Plotting results
+    plt.figure(figsize=(8, 5))
+    plt.plot(t_values, h_values, label="Water Level h(t)")
+    plt.xlabel("Time (minutes)")
+    plt.ylabel("Water Level (m)")
+    plt.title("Water Level Over Time in the Tank")
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
+### Solving witch PID
