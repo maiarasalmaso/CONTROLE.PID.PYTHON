@@ -43,116 +43,27 @@ Derivative Control (D): Acts on the rate of change of the error, predicting futu
 
 ### Solving the system's PID
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy.integrate import solve_ivp
+The values presented for the PID controller are the initial values used in the system configuration. The proportional gain (**Kc**) was set to **10**, the integral time (**TauI**) to **4 minutes**, and the derivative time (**TauD**) to **0.1 minute**.
 
-    
-    # Parâmetros do sistema
-    m = 0.2  # Massa da esfera (kg)
-    rho_ar = 1.225  # Densidade do ar (kg/m^3)
-    A_esfera = np.pi * (0.05)**2  # Área de seção transversal da esfera (m^2)
-    g = 9.81  # Aceleração devida à gravidade (m/s^2)
-    CD = 1  # Coeficiente de arrasto
-    k = 0.2  # Constante de proporcionalidade para a velocidade do ar (m/s), 0 para anular esse efeito
-    u = 2.146*10**-5 # viscosidade dinamica do ar kg/(m.s)
-    var0inicial = 3
-    var0 = 3
-    Fgrav = m*g
+The presented graph shows the PID control applied to the water level in a tank, with a change in the setpoint over time. Initially, the water level starts around 0.40m. After 40 minutes, an abrupt change in the setpoint is observed, indicated by the dashed red line, signaling an increase in the desired water level. In response, the system rapidly increases the water level to approximately 0.50m, with the PID controller trying to adjust the value according to the reference. After this increase, the water level shows small oscillations around the new setpoint.
 
-    # Parâmetros do sistema
-    A = 0.3  # m^2
-    Rv = 19.5  # min/m^2
-    h_0 = 0.2925  # m (nível inicial de água)
-    
-    # Parâmetros do controlador PI
-    Kc = 0.11  # Ganho proporcional
-    TauI = 4  # Tempo integral (min)
-    TauD = 0.1  # Tempo derivativo (min)
-    MV0 = 0.015  # Valor inicial da variável manipulada (qe_0)
-    setpoint_inicial = 0.4  # Setpoint inicial (m)
-    setpoint_final = 0.5  # Setpoint final (m)
-    MV_min = 0.0  # Valor mínimo da variável manipulada
-    MV_max = 0.03  # Valor máximo da variável manipulada
-    
-    # Variáveis globais para o controlador PI
-    erroI = 0.0
-    erro_anterior = 0.0
-    delta_t = 0.1  # Passo de tempo (min)
-    
-    # Tempo total de simulação e passo de tempo
-    tempo_total = 100  # minutos
-    delta_t = 0.1  # minutos
-    
-    # Cria um array de tempo
-    t = np.arange(0, tempo_total, delta_t)
+![image](https://github.com/user-attachments/assets/f345a3a8-3750-4521-ac8f-c5651a8223a6)
 
+The graph shown illustrates the PID control applied to the water level in a tank, with a change in the setpoint over time, and is configured with a proportional gain \( K_c = 0.1 \).
 
-    # Função do controlador PID
-    def ControlePID(CV, MV, setpoint):
-        global erroI, erro_anterior
-        erro = setpoint - CV  # Erro atual ACAO REVERSA!!!!!!!!!!!!!
-    
-        # Ação Proporcional (P)
-        acao_P = Kc * erro
-    
-        # Ação Integral (I)
-        erroI += erro * delta_t
-        if i == 1:  # Resetar o termo integral no primeiro passo
-            erroI = 0
-        acao_I = Kc * (1 / TauI) * erroI
-    
-        # Ação Derivativa (D)
-        derivada_erro = (erro - erro_anterior) / delta_t
-        acao_D = Kc * TauD * derivada_erro
-    
-        # Cálculo da variável manipulada (MV)
-        MV = MV0 + acao_P + acao_I + acao_D
-        # Aplicar limites físicos ao MV
-        MV = np.clip(MV, MV_min, MV_max)  # Limita MV entre MV_min e MV_max
-    
-        # Atualiza o erro anterior
-        erro_anterior = erro
-    
-        return MV  # Return only the calculated MV value
-        # Função da EDO do sistema
-        def dh_dt(h, t, qe):
-            q = (1 / Rv) * h  # Vazão de saída
-            return (qe - q) / A  # EDO
-            
-        # Arrays para armazenar resultados
-        h_values = np.zeros_like(t)  # Nível de água
-        qe_values = np.zeros_like(t)  # Vazão de entrada (MV)
-        setpoint_values = np.zeros_like(t)  # Valores do setpoint ao longo do tempo
-        
-        # Condição inicial
-        h_values[0] = h_0
-        qe_values[0] = MV0
-        setpoint_values[:] = setpoint_inicial  # Setpoint inicial
-        
-        # Definir o instante em que o setpoint muda
-        tempo_mudanca_setpoint = 40  # Tempo em que o setpoint muda (minutos)
-        
-        # Loop de simulação
-        for i in range(1, len(t)):
-            # Alterar o setpoint no tempo especificado
-            if t[i] >= tempo_mudanca_setpoint:
-                setpoint_values[i] = setpoint_final
-            else:
-                setpoint_values[i] = setpoint_inicial
-        
-            # Atualiza a variável manipulada (MV) usando o controlador PI
-            qe_values[i] = ControlePID(h_values[i - 1], qe_values[i - 1], setpoint_values[i]) # Assign only the MV value to qe_values[i]
-        
-            # Resolve a EDO para o próximo passo de tempo
-            sol = odeint(dh_dt, h_values[i - 1], [t[i - 1], t[i]], args=(qe_values[i],))
-            h_values[i] = sol[-1][0]  # Extrai o valor escalar do array
-            # Gráfico 1: Nível de água e setpoint
-        plt.figure(figsize=(8, 8))
-        plt.plot(t, h_values, label="Nível de Água h(t)")
-        plt.plot(t, setpoint_values, 'r--', label="Setpoint")
-        plt.xlabel("Tempo (minutos)")
-        plt.ylabel("Nível de Água (m)")
-        plt.title("Controle PID do Nível de Água no Tanque com Mudança de Setpoint")
-        plt.legend()
-        plt.show()
+As in the previous graph, the water level starts around 0.40 meters (represented by the blue line) until a change in the setpoint occurs, indicated by the dashed red line, which rises to 0.50 meters after 40 minutes. The PID system responds quickly to the increase in the setpoint, causing the water level to rise to the new desired value.
+
+![image](https://github.com/user-attachments/assets/7b64de55-c2a9-4698-89c2-e00b6f9cff7f)
+
+#### Conclusão
+### Conclusion
+
+### Conclusion
+
+The study of PID control applied to the water level in a tank demonstrated the effectiveness of this control method in maintaining the water level close to the desired value (setpoint). The PID control continuously adjusts the manipulated variable (inlet flow rate) to correct the error between the measured value and the desired value, using proportional, integral, and derivative actions.
+
+Through the analysis of the presented graphs, we can observe how the system responds to changes in the setpoint. Initially, the water level starts around 0.40 meters and, after the abrupt change in the setpoint to 0.50 meters, the PID system rapidly increases the water level to the desired value. However, PID control also exhibits small oscillations around the setpoint after this increase, which is expected due to the interaction of the three components of the controller (P, I, and D).
+
+Additionally, the configuration of the PID controller with a proportional gain Kc = 0.1 was sufficient to provide a quick system response, but it also showed that fine-tuning the control might be necessary to reduce oscillations and improve stability. Adjusting the PID parameters, such as \( \tau_I \) and \( \tau_D \), can further optimize the system’s performance and ensure that the water level remains stable without large fluctuations.
+
+Therefore, PID control is a powerful tool for dynamic systems like this, offering an efficient way to control variables, but also requiring careful adjustments of parameters to achieve the desired performance and minimize issues like excessive oscillations.
