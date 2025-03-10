@@ -41,49 +41,118 @@ Derivative Control (D): Acts on the rate of change of the error, predicting futu
 - **(tau_D)** → Derivative time constant, which improves response by anticipating error changes.  
 
 
-### Solving the system's ODE
+### Solving the system's PID
 
     import numpy as np
     import matplotlib.pyplot as plt
     from scipy.integrate import solve_ivp
 
     
-    # Given parameters
+    # Parâmetros do sistema
+    m = 0.2  # Massa da esfera (kg)
+    rho_ar = 1.225  # Densidade do ar (kg/m^3)
+    A_esfera = np.pi * (0.05)**2  # Área de seção transversal da esfera (m^2)
+    g = 9.81  # Aceleração devida à gravidade (m/s^2)
+    CD = 1  # Coeficiente de arrasto
+    k = 0.2  # Constante de proporcionalidade para a velocidade do ar (m/s), 0 para anular esse efeito
+    u = 2.146*10**-5 # viscosidade dinamica do ar kg/(m.s)
+    var0inicial = 3
+    var0 = 3
+    Fgrav = m*g
+
+    # Parâmetros do sistema
     A = 0.3  # m^2
     Rv = 19.5  # min/m^2
-    qe_0 = 0.015  # m^3/min
-    h_0 = 0.2925  # m
-
+    h_0 = 0.2925  # m (nível inicial de água)
     
-
-    # Differential equation function
-    def dh_dt(t, h):
-    q = (1 / Rv) * h  # Outflow equation
-    return (qe_0 - q) / A  # ODE
-
-
-    # Time span for simulation
-    t_span = (0, 10)  # Simulating for 10 minutes
-    t_eval = np.linspace(0, 10, 100)  # Time points for evaluation
-
-
-    # Solving the ODE
-    solution = solve_ivp(dh_dt, t_span, [h_0], t_eval=t_eval, method='RK45')
-
-
-    # Extracting results
-    t_values = solution.t
-    h_values = solution.y[0]
-
-
-    # Plotting results
-    plt.figure(figsize=(8, 5))
-    plt.plot(t_values, h_values, label="Water Level h(t)")
-    plt.xlabel("Time (minutes)")
-    plt.ylabel("Water Level (m)")
-    plt.title("Water Level Over Time in the Tank")
-    plt.legend()
-    plt.grid()
-    plt.show()
+    # Parâmetros do controlador PI
+    Kc = 0.11  # Ganho proporcional
+    TauI = 4  # Tempo integral (min)
+    TauD = 0.1  # Tempo derivativo (min)
+    MV0 = 0.015  # Valor inicial da variável manipulada (qe_0)
+    setpoint_inicial = 0.4  # Setpoint inicial (m)
+    setpoint_final = 0.5  # Setpoint final (m)
+    MV_min = 0.0  # Valor mínimo da variável manipulada
+    MV_max = 0.03  # Valor máximo da variável manipulada
     
-### Solving witch PID
+    # Variáveis globais para o controlador PI
+    erroI = 0.0
+    erro_anterior = 0.0
+    delta_t = 0.1  # Passo de tempo (min)
+    
+    # Tempo total de simulação e passo de tempo
+    tempo_total = 100  # minutos
+    delta_t = 0.1  # minutos
+    
+    # Cria um array de tempo
+    t = np.arange(0, tempo_total, delta_t)
+
+
+    # Função do controlador PID
+    def ControlePID(CV, MV, setpoint):
+        global erroI, erro_anterior
+        erro = setpoint - CV  # Erro atual ACAO REVERSA!!!!!!!!!!!!!
+    
+        # Ação Proporcional (P)
+        acao_P = Kc * erro
+    
+        # Ação Integral (I)
+        erroI += erro * delta_t
+        if i == 1:  # Resetar o termo integral no primeiro passo
+            erroI = 0
+        acao_I = Kc * (1 / TauI) * erroI
+    
+        # Ação Derivativa (D)
+        derivada_erro = (erro - erro_anterior) / delta_t
+        acao_D = Kc * TauD * derivada_erro
+    
+        # Cálculo da variável manipulada (MV)
+        MV = MV0 + acao_P + acao_I + acao_D
+        # Aplicar limites físicos ao MV
+        MV = np.clip(MV, MV_min, MV_max)  # Limita MV entre MV_min e MV_max
+    
+        # Atualiza o erro anterior
+        erro_anterior = erro
+    
+        return MV  # Return only the calculated MV value
+        # Função da EDO do sistema
+        def dh_dt(h, t, qe):
+            q = (1 / Rv) * h  # Vazão de saída
+            return (qe - q) / A  # EDO
+            
+        # Arrays para armazenar resultados
+        h_values = np.zeros_like(t)  # Nível de água
+        qe_values = np.zeros_like(t)  # Vazão de entrada (MV)
+        setpoint_values = np.zeros_like(t)  # Valores do setpoint ao longo do tempo
+        
+        # Condição inicial
+        h_values[0] = h_0
+        qe_values[0] = MV0
+        setpoint_values[:] = setpoint_inicial  # Setpoint inicial
+        
+        # Definir o instante em que o setpoint muda
+        tempo_mudanca_setpoint = 40  # Tempo em que o setpoint muda (minutos)
+        
+        # Loop de simulação
+        for i in range(1, len(t)):
+            # Alterar o setpoint no tempo especificado
+            if t[i] >= tempo_mudanca_setpoint:
+                setpoint_values[i] = setpoint_final
+            else:
+                setpoint_values[i] = setpoint_inicial
+        
+            # Atualiza a variável manipulada (MV) usando o controlador PI
+            qe_values[i] = ControlePID(h_values[i - 1], qe_values[i - 1], setpoint_values[i]) # Assign only the MV value to qe_values[i]
+        
+            # Resolve a EDO para o próximo passo de tempo
+            sol = odeint(dh_dt, h_values[i - 1], [t[i - 1], t[i]], args=(qe_values[i],))
+            h_values[i] = sol[-1][0]  # Extrai o valor escalar do array
+            # Gráfico 1: Nível de água e setpoint
+        plt.figure(figsize=(8, 8))
+        plt.plot(t, h_values, label="Nível de Água h(t)")
+        plt.plot(t, setpoint_values, 'r--', label="Setpoint")
+        plt.xlabel("Tempo (minutos)")
+        plt.ylabel("Nível de Água (m)")
+        plt.title("Controle PID do Nível de Água no Tanque com Mudança de Setpoint")
+        plt.legend()
+        plt.show()
