@@ -55,8 +55,6 @@ As in the previous graph, the water level starts around 0.40 meters (represented
 
 ![image](https://github.com/user-attachments/assets/7b64de55-c2a9-4698-89c2-e00b6f9cff7f)
 
-#### Conclusão
-### Conclusion
 
 ### Conclusion
 
