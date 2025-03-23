@@ -43,25 +43,14 @@ Derivative Control (D): Acts on the rate of change of the error, predicting futu
 
 ### Solving the system's PID
 
-The values presented for the PID controller are the initial values used in the system configuration. The proportional gain (**Kc**) was set to **10**, the integral time (**TauI**) to **4 minutes**, and the derivative time (**TauD**) to **0.1 minute**.
+![image](https://github.com/user-attachments/assets/6a239630-eaa0-4462-9a30-29764add1835)
 
-The presented graph shows the PID control applied to the water level in a tank, with a change in the setpoint over time. Initially, the water level starts around 0.40m. After 40 minutes, an abrupt change in the setpoint is observed, indicated by the dashed red line, signaling an increase in the desired water level. In response, the system rapidly increases the water level to approximately 0.50m, with the PID controller trying to adjust the value according to the reference. After this increase, the water level shows small oscillations around the new setpoint.
+I tested different values of **Kc** to see where the system would settle. Initially, **Kc was 2**. Since there were many oscillations — indicating that the value was too high — I reduced it to **0.00048**. It was necessary to increase the simulation time to **300 minutes** to better visualize where the system would stabilize, which occurred at around **150 minutes**. Therefore, I inserted a change in the loop to increase the setpoint by **+3**, i.e., sp = 38 when t >= 150.
 
-![image](https://github.com/user-attachments/assets/f345a3a8-3750-4521-ac8f-c5651a8223a6)
+The next step was to increase the simulation time to **400 minutes** to better visualize the settling behavior. It was observed that the system had very slow responses — the settling time for the second setpoint was 300 minutes, and the first one didn’t even become stable due to oscillations. So, I increased the value of **Kc** to **0.00048**, and we can see that the system reached stability in both setpoints. In the first, the system settled in approximately **100 seconds**; in the second, the response time was reduced and the system settled in **250 seconds**.
 
-The graph shown illustrates the PID control applied to the water level in a tank, with a change in the setpoint over time, and is configured with a proportional gain \( K_c = 0.1 \).
+Then, at **250 seconds**, I introduced another setpoint change of **-6**, that is, setpoint = 32. There were some oscillations, and the settling time for the first setpoint was **150 seconds**. For the second, the system practically did not stabilize, and in the third, it settled in about **360 seconds**. Since there were oscillations before the system stabilized, it was a sign that **Kc** was too low, so I increased it to **0.00095**. This showed an improvement in response time. For better visualization, I reduced the previously extended simulation time from **700 to 500 seconds**.
 
-As in the previous graph, the water level starts around 0.40 meters (represented by the blue line) until a change in the setpoint occurs, indicated by the dashed red line, which rises to 0.50 meters after 40 minutes. The PID system responds quickly to the increase in the setpoint, causing the water level to rise to the new desired value.
+It is worth noting that in the third setpoint, there were no changes in response speed — it remained at **360 seconds**. In the second setpoint, the response time decreased to **220 seconds**, while in the first, it was also reduced to **150 seconds**.
 
-![image](https://github.com/user-attachments/assets/7b64de55-c2a9-4698-89c2-e00b6f9cff7f)
-
-
-### Conclusion
-
-The study of PID control applied to the water level in a tank demonstrated the effectiveness of this control method in maintaining the water level close to the desired value (setpoint). The PID control continuously adjusts the manipulated variable (inlet flow rate) to correct the error between the measured value and the desired value, using proportional, integral, and derivative actions.
-
-Through the analysis of the presented graphs, we can observe how the system responds to changes in the setpoint. Initially, the water level starts around 0.40 meters and, after the abrupt change in the setpoint to 0.50 meters, the PID system rapidly increases the water level to the desired value. However, PID control also exhibits small oscillations around the setpoint after this increase, which is expected due to the interaction of the three components of the controller (P, I, and D).
-
-Additionally, the configuration of the PID controller with a proportional gain Kc = 0.1 was sufficient to provide a quick system response, but it also showed that fine-tuning the control might be necessary to reduce oscillations and improve stability. Adjusting the PID parameters, such as \( \tau_I \) and \( \tau_D \), can further optimize the system’s performance and ensure that the water level remains stable without large fluctuations.
-
-Therefore, PID control is a powerful tool for dynamic systems like this, offering an efficient way to control variables, but also requiring careful adjustments of parameters to achieve the desired performance and minimize issues like excessive oscillations.
+Another important point is that **overshoots** occurred. In the first and third setpoints, there were **two positive and two negative overshoots**. In the second setpoint, **two positive and one negative overshoot** were observed.
